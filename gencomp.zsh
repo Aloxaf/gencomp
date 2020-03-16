@@ -2,6 +2,8 @@
 
 'emulate' '-L' 'zsh'
 
+zmodload zsh/zutil
+
 GENCOMP_HOME=${0:h:A}
 : ${GENCOMP_DIR:-$GENCOMP_HOME/completions}
 
@@ -12,20 +14,25 @@ gencomp() {
 
     mkdir -p $GENCOMP_DIR
 
-    if [[ -f $1 && $1 == *man/man1/*.gz ]]; then
-        gencomp-from-manpage $1 || return 1
-    elif [[ $2 == '--man' ]]; then
-        gencomp-from-manpage /usr/share/man/man1/$1.1.gz || return 1
-    elif (( $+commands[$1] )); then
-        gencomp-from-help $1 $2 || return 1
+    local name=$1 man cmd force
+    shift 2>/dev/null
+    zparseopts -man=man -cmd:=cmd f=force
+
+    if [[ -f $name ]]; then
+        gencomp-from-manpage $name $force || return 1
+    elif [[ -n $man ]]; then
+        gencomp-from-manpage "$(man --path $name)" $force || return 1
+    elif (( $+commands[$name] )); then
+        gencomp-from-help $name "$cmd[2]" "$force" || return 1
     else
-        print 'Usage: $0 command [--man|HELP_COMMAND]'
-        print '       $0 manfile'
+        echo "Usage: $0 command [--man] [--cmd=HELP_COMMAND] [-f]"
+        echo "       $0 manfile [-f]"
+        return
     fi
-    print 'Finished!'
+    echo 'Finished!'
     if (( $+functions[compdef] )); then
-        autoload -Uz _$1
-        compdef _$1 $1
+        autoload -Uz _$name
+        compdef _$name $name
     fi
 }
 
@@ -34,7 +41,12 @@ gencomp-from-help() {
     local base=$GENCOMP_HOME/lib/zsh-completion-generator
 
     echo "Generating completion from \`$1 $help\`"
-    $1 $help 2>&1 | python $base/help2comp.py $1 >! $GENCOMP_DIR/_$1
+    if [[ -e $GENCOMP_DIR/_$1 && $3 != "-f" ]]; then
+        print -P "%F{yellow}$GENCOMP_DIR/_$1 exists%f"
+        return 1
+    else
+        $1 $help 2>&1 | python $base/help2comp.py $1 >! $GENCOMP_DIR/_$1
+    fi
 }
 
 gencomp-from-manpage() {
@@ -69,5 +81,10 @@ gencomp-from-manpage() {
     template=${template//COMMAND/$name}
     template=${template//ARGUMENTS/$completions}
 
-    print -r - $template >! $GENCOMP_DIR/_$name
+    if [[ -e $GENCOMP_DIR/_$name && $2 != "-f" ]]; then
+        print -P "%F{yellow}$GENCOMP_DIR/_$name exists%f"
+        return 1
+    else
+        print -r - $template >! $GENCOMP_DIR/_$name
+    fi
 }

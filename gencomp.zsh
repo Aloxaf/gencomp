@@ -1,11 +1,15 @@
 #!/usr/bin/env zsh
 
-GENCOMP_HOME=${0:h}
+'emulate' '-L' 'zsh'
+
+GENCOMP_HOME=${0:h:A}
 : ${GENCOMP_DIR:-$GENCOMP_HOME/completions}
 
 fpath+=($GENCOMP_DIR)
 
 gencomp() {
+    'emulate' '-L' 'zsh'
+
     mkdir -p $GENCOMP_DIR
 
     if [[ -f $1 && $1 == *man/man1/*.gz ]]; then
@@ -48,7 +52,9 @@ gencomp-from-manpage() {
     make --directory $base >/dev/null || return 1
 
     echo "Running scanner..."
+    pushd $base > /dev/null
     $base/scanner < $base/completions/fish/$name.fish > /dev/null
+    popd > /dev/null
     local scanner_output=$base/zsh-converter.out
 
     echo "Generating zsh completion..."

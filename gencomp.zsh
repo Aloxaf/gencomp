@@ -25,7 +25,7 @@ gencomp() {
     elif (( $+commands[$name] )); then
         gencomp-from-help $name "$cmd[2]" "$force" || return 1
     else
-        echo "Usage: $0 command [--man] [--cmd=HELP_COMMAND] [-f]"
+        echo "Usage: $0 command [--man] [--cmd HELP_COMMAND] [-f]"
         echo "       $0 manfile [-f]"
         return
     fi
@@ -45,7 +45,7 @@ gencomp-from-help() {
         print -P "%F{yellow}$GENCOMP_DIR/_$1 exists%f"
         return 1
     else
-        $1 $help 2>&1 | python $base/help2comp.py $1 >! $GENCOMP_DIR/_$1
+        $1 ${(z)help} 2>&1 | python $base/help2comp.py $1 >! $GENCOMP_DIR/_$1
     fi
 }
 
